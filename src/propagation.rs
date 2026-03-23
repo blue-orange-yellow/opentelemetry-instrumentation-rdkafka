@@ -5,6 +5,12 @@ pub struct HeaderInjector {
     entries: Vec<(String, String)>,
 }
 
+impl Default for HeaderInjector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HeaderInjector {
     pub fn new() -> Self {
         Self {
