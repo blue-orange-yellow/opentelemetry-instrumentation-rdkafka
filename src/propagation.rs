@@ -1,4 +1,4 @@
-use opentelemetry::propagation::Injector;
+use opentelemetry::propagation::{Extractor, Injector};
 use rdkafka::message::{Header, Headers, OwnedHeaders};
 
 pub struct HeaderInjector {
@@ -50,6 +50,39 @@ impl HeaderInjector {
 impl Injector for HeaderInjector {
     fn set(&mut self, key: &str, value: String) {
         self.entries.push((key.to_owned(), value));
+    }
+}
+
+pub struct HeaderExtractor<'a> {
+    headers: &'a rdkafka::message::BorrowedHeaders,
+}
+
+impl<'a> HeaderExtractor<'a> {
+    pub fn new(headers: &'a rdkafka::message::BorrowedHeaders) -> Self {
+        Self { headers }
+    }
+}
+
+impl<'a> Extractor for HeaderExtractor<'a> {
+    fn get(&self, key: &str) -> Option<&str> {
+        for i in 0..self.headers.count() {
+            if let Ok(header) = self.headers.get_as::<str>(i) {
+                if header.key == key {
+                    return header.value;
+                }
+            }
+        }
+        None
+    }
+
+    fn keys(&self) -> Vec<&str> {
+        let mut keys = Vec::with_capacity(self.headers.count());
+        for i in 0..self.headers.count() {
+            if let Some(header) = self.headers.try_get(i) {
+                keys.push(header.key);
+            }
+        }
+        keys
     }
 }
 
