@@ -2,7 +2,9 @@ use std::time::Duration;
 
 use opentelemetry::global;
 use opentelemetry::trace::{Span, SpanKind, Tracer};
+use opentelemetry_otlp::SpanExporter;
 use opentelemetry_sdk::propagation::TraceContextPropagator;
+use opentelemetry_sdk::Resource;
 use rdkafka::consumer::{Consumer, StreamConsumer};
 use rdkafka::producer::FutureProducer;
 use rdkafka::producer::FutureRecord;
@@ -12,9 +14,19 @@ use opentelemetry_instrumentation_rdkafka::{TracingConsumer, TracingProducer};
 
 #[tokio::main]
 async fn main() {
-    // Set up OTel: stdout exporter + W3C TraceContext propagator
+    // Set up OTel: OTLP exporter (sends to Jaeger) + W3C TraceContext propagator
+    let exporter = SpanExporter::builder()
+        .with_tonic()
+        .build()
+        .expect("Failed to create OTLP exporter");
+
+    let resource = Resource::builder()
+        .with_service_name("kafka-otel-example")
+        .build();
+
     let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
-        .with_simple_exporter(opentelemetry_stdout::SpanExporter::default())
+        .with_resource(resource)
+        .with_batch_exporter(exporter)
         .build();
     global::set_tracer_provider(provider.clone());
     global::set_text_map_propagator(TraceContextPropagator::new());

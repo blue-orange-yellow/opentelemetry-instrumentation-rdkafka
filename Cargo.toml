@@ -13,4 +13,5 @@ rdkafka = { version = "0.39", features = ["cmake-build"] }
 [dev-dependencies]
 opentelemetry_sdk = { version = "0.31", features = ["testing"] }
 opentelemetry-stdout = "0.31"
+opentelemetry-otlp = { version = "0.31", features = ["grpc-tonic"] }
 tokio = { version = "1", features = ["full"] }
