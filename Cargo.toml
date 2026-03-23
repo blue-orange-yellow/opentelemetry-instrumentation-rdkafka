@@ -3,8 +3,13 @@ name = "opentelemetry-instrumentation-rdkafka"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
-description = "OpenTelemetry instrumentation for rust-rdkafka"
+description = "OpenTelemetry instrumentation for rust-rdkafka — automatic tracing and context propagation for Kafka producers and consumers"
 license = "Apache-2.0"
+repository = "https://github.com/blue-orange-yellow/opentelemetry-instrumentation-rdkafka"
+homepage = "https://github.com/blue-orange-yellow/opentelemetry-instrumentation-rdkafka"
+keywords = ["opentelemetry", "kafka", "rdkafka", "tracing", "instrumentation"]
+categories = ["development-tools::debugging", "api-bindings"]
+readme = "README.md"
 
 [dependencies]
 opentelemetry = "0.31"
