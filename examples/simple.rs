@@ -94,6 +94,8 @@ async fn main() {
         }
     }
 
-    provider.shutdown().expect("Failed to shutdown tracer provider");
+    provider
+        .shutdown()
+        .expect("Failed to shutdown tracer provider");
     println!("Done!");
 }
