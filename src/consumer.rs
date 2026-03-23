@@ -12,12 +12,21 @@ use crate::semantic::*;
 
 const INSTRUMENTATION_NAME: &str = "opentelemetry-instrumentation-rdkafka";
 
+/// A wrapper around [`StreamConsumer`] that automatically creates OpenTelemetry
+/// spans and extracts trace context from Kafka message headers on every receive.
+///
+/// The generated span has kind [`SpanKind::Consumer`] and is connected to the
+/// producer span via a **Span Link** (not parent-child), following the
+/// [OTel Messaging Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/messaging/).
+/// The receive span is ended immediately; callers should create their own
+/// process span using the returned [`Context`].
 pub struct TracingConsumer {
     inner: StreamConsumer,
     group_id: String,
 }
 
 impl TracingConsumer {
+    /// Wraps an existing [`StreamConsumer`] with the given consumer group ID.
     pub fn new(consumer: StreamConsumer, group_id: impl Into<String>) -> Self {
         Self {
             inner: consumer,
@@ -25,10 +34,17 @@ impl TracingConsumer {
         }
     }
 
+    /// Returns a reference to the underlying [`StreamConsumer`].
     pub fn inner(&self) -> &StreamConsumer {
         &self.inner
     }
 
+    /// Receives a message from Kafka, automatically creating a consumer span
+    /// and extracting trace context from the message headers.
+    ///
+    /// Returns both the message and the extracted [`Context`] containing the
+    /// producer's span context. Use this context to create a process span for
+    /// your business logic.
     pub async fn recv(&self) -> Result<(BorrowedMessage<'_>, Context), KafkaError> {
         let msg = self.inner.recv().await?;
 
@@ -45,13 +61,13 @@ impl TracingConsumer {
             MESSAGING_KAFKA_DESTINATION_PARTITION,
             msg.partition() as i64,
         ));
-        attributes.push(KeyValue::new(
-            MESSAGING_KAFKA_MESSAGE_OFFSET,
-            msg.offset(),
-        ));
+        attributes.push(KeyValue::new(MESSAGING_KAFKA_MESSAGE_OFFSET, msg.offset()));
         if let Some(key) = msg.key() {
             if let Ok(key_str) = std::str::from_utf8(key) {
-                attributes.push(KeyValue::new(MESSAGING_KAFKA_MESSAGE_KEY, key_str.to_owned()));
+                attributes.push(KeyValue::new(
+                    MESSAGING_KAFKA_MESSAGE_KEY,
+                    key_str.to_owned(),
+                ));
             }
         }
 
@@ -72,6 +88,10 @@ impl TracingConsumer {
     }
 }
 
+/// Extracts an OpenTelemetry [`Context`] from a Kafka message's headers.
+///
+/// This is useful when you want to extract trace context without using
+/// [`TracingConsumer`] (e.g., when using a custom consumer implementation).
 pub fn extract_context_from_message(msg: &BorrowedMessage<'_>) -> Context {
     match msg.headers() {
         Some(headers) => {

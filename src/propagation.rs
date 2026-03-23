@@ -1,6 +1,12 @@
+//! Bridge between OpenTelemetry propagation and rdkafka message headers.
+
 use opentelemetry::propagation::{Extractor, Injector};
 use rdkafka::message::{Header, Headers, OwnedHeaders};
 
+/// Collects trace context entries and converts them to rdkafka [`OwnedHeaders`].
+///
+/// Implements [`Injector`] so it can be used with
+/// [`TextMapPropagator::inject_context`](opentelemetry::propagation::TextMapPropagator::inject_context).
 pub struct HeaderInjector {
     entries: Vec<(String, String)>,
 }
@@ -12,16 +18,20 @@ impl Default for HeaderInjector {
 }
 
 impl HeaderInjector {
+    /// Creates a new empty injector.
     pub fn new() -> Self {
         Self {
             entries: Vec::new(),
         }
     }
 
+    /// Converts the collected entries into [`OwnedHeaders`].
     pub fn into_owned_headers(self) -> OwnedHeaders {
         self.into_owned_headers_with_existing(None)
     }
 
+    /// Converts the collected entries into [`OwnedHeaders`], preserving any
+    /// existing headers provided by the caller.
     pub fn into_owned_headers_with_existing(self, existing: Option<OwnedHeaders>) -> OwnedHeaders {
         let mut headers = match existing {
             Some(existing) => {
@@ -59,11 +69,16 @@ impl Injector for HeaderInjector {
     }
 }
 
+/// Reads trace context from rdkafka [`BorrowedHeaders`](rdkafka::message::BorrowedHeaders).
+///
+/// Implements [`Extractor`] so it can be used with
+/// [`TextMapPropagator::extract`](opentelemetry::propagation::TextMapPropagator::extract).
 pub struct HeaderExtractor<'a> {
     headers: &'a rdkafka::message::BorrowedHeaders,
 }
 
 impl<'a> HeaderExtractor<'a> {
+    /// Wraps a reference to borrowed headers for extraction.
     pub fn new(headers: &'a rdkafka::message::BorrowedHeaders) -> Self {
         Self { headers }
     }
@@ -118,11 +133,10 @@ mod tests {
 
     #[test]
     fn injector_merges_with_existing_headers() {
-        let existing = OwnedHeaders::new()
-            .insert(rdkafka::message::Header {
-                key: "custom-header",
-                value: Some("custom-value"),
-            });
+        let existing = OwnedHeaders::new().insert(rdkafka::message::Header {
+            key: "custom-header",
+            value: Some("custom-value"),
+        });
 
         let mut injector = HeaderInjector::new();
         injector.set("traceparent", "00-abc-def-01".to_string());

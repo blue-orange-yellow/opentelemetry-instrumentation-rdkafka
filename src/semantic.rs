@@ -1,3 +1,6 @@
+//! OpenTelemetry [Messaging Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/messaging/)
+//! attribute constants for Kafka.
+
 use opentelemetry::KeyValue;
 
 // Core attributes
@@ -16,6 +19,8 @@ pub const MESSAGING_KAFKA_CONSUMER_GROUP: &str = "messaging.kafka.consumer.group
 pub const MESSAGING_KAFKA_MESSAGE_KEY: &str = "messaging.kafka.message.key";
 pub const MESSAGING_KAFKA_MESSAGE_TOMBSTONE: &str = "messaging.kafka.message.tombstone";
 
+/// Returns the base attributes common to all messaging spans:
+/// `messaging.system`, `messaging.destination.name`, and `messaging.operation.type`.
 pub fn base_attributes(topic: &str, operation: &str) -> Vec<KeyValue> {
     vec![
         KeyValue::new(MESSAGING_SYSTEM, "kafka"),

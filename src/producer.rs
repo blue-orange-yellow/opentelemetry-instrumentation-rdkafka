@@ -6,27 +6,38 @@ use opentelemetry::{
     Context, KeyValue,
 };
 use rdkafka::message::ToBytes;
-use rdkafka::producer::{FutureProducer, FutureRecord};
 use rdkafka::producer::future_producer::OwnedDeliveryResult;
+use rdkafka::producer::{FutureProducer, FutureRecord};
 
 use crate::propagation::HeaderInjector;
 use crate::semantic::*;
 
 const INSTRUMENTATION_NAME: &str = "opentelemetry-instrumentation-rdkafka";
 
+/// A wrapper around [`FutureProducer`] that automatically creates OpenTelemetry
+/// spans and injects trace context into Kafka message headers on every send.
+///
+/// The generated span has kind [`SpanKind::Producer`] and follows the
+/// [OTel Messaging Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/messaging/).
 pub struct TracingProducer {
     inner: FutureProducer,
 }
 
 impl TracingProducer {
+    /// Wraps an existing [`FutureProducer`].
     pub fn new(producer: FutureProducer) -> Self {
         Self { inner: producer }
     }
 
+    /// Returns a reference to the underlying [`FutureProducer`].
     pub fn inner(&self) -> &FutureProducer {
         &self.inner
     }
 
+    /// Sends a record to Kafka, automatically creating a producer span and
+    /// injecting trace context into the message headers.
+    ///
+    /// Any existing headers on the record are preserved.
     pub async fn send<'a, K, P>(
         &self,
         mut record: FutureRecord<'a, K, P>,
@@ -43,11 +54,17 @@ impl TracingProducer {
 
         if let Some(key) = record.key {
             if let Ok(key_str) = std::str::from_utf8(key.to_bytes()) {
-                attributes.push(KeyValue::new(MESSAGING_KAFKA_MESSAGE_KEY, key_str.to_owned()));
+                attributes.push(KeyValue::new(
+                    MESSAGING_KAFKA_MESSAGE_KEY,
+                    key_str.to_owned(),
+                ));
             }
         }
         if let Some(partition) = record.partition {
-            attributes.push(KeyValue::new(MESSAGING_KAFKA_DESTINATION_PARTITION, partition as i64));
+            attributes.push(KeyValue::new(
+                MESSAGING_KAFKA_DESTINATION_PARTITION,
+                partition as i64,
+            ));
         }
         if record.payload.is_none() {
             attributes.push(KeyValue::new(MESSAGING_KAFKA_MESSAGE_TOMBSTONE, true));
