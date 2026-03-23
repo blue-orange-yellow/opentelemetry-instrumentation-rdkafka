@@ -118,10 +118,19 @@ This crate emits the following attributes per the [Messaging Semantic Convention
 
 ## Running the Example
 
-Start Kafka locally, then:
+A `docker-compose.yml` is included to start Kafka and Jaeger locally:
 
 ```bash
+docker compose up -d
 cargo run --example simple
+```
+
+Then open the Jaeger UI at [http://localhost:16686](http://localhost:16686) and search for the `kafka-otel-example` service. You should see `publish`, `receive`, and `process` spans with trace context linked across producer and consumer.
+
+To stop the containers:
+
+```bash
+docker compose down
 ```
 
 See [`examples/simple.rs`](examples/simple.rs) for the full source.
